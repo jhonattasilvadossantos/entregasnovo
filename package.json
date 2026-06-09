@@ -1,0 +1,8 @@
+{
+  "name": "controle-entregas",
+  "version": "1.0.0",
+  "description": "Controle de entregas diárias com Neon Postgres",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0"
+  }
+}

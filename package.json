@@ -1,8 +1,480 @@
-{
-  "name": "controle-entregas",
-  "version": "1.0.0",
-  "description": "Controle de entregas diárias com Neon Postgres",
-  "dependencies": {
-    "@neondatabase/serverless": "^0.9.0"
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Controle de Entregas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+  .container{max-width:1100px;margin:0 auto;padding:1.5rem 1rem}
+  .hdr{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem}
+  .title{font-size:22px;font-weight:600;color:#1a1a1a;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sub{font-size:13px;color:#666;margin-top:3px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+  .badge-ok{background:#e1f5ee;color:#0F6E56}
+  .badge-err{background:#fdecea;color:#c0392b}
+  .badge-load{background:#e8f0fe;color:#1565C0}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem}
+  input[type=text]{flex:1;min-width:180px;max-width:280px;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;outline:none;background:#fff}
+  input[type=text]:focus{border-color:#378ADD}
+  select{font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;outline:none}
+  .btn{font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;transition:opacity .15s;border:none}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .bp{background:#1a1a1a;color:#fff}
+  .bp:hover:not(:disabled){opacity:.82}
+  .bd{background:transparent;color:#c0392b;border:1px solid #c0392b;padding:5px 9px;font-size:12px}
+  .bd:hover:not(:disabled){background:#fdecea}
+  .bpdf{background:#1565C0;color:#fff}
+  .bpdf:hover:not(:disabled){opacity:.87}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+  .stat{background:#fff;border-radius:10px;padding:12px 16px;border:1px solid #eee}
+  .slbl{font-size:12px;color:#888;margin-bottom:4px}
+  .sval{font-size:22px;font-weight:600;color:#1a1a1a}
+  .sval.sm{font-size:15px;padding-top:4px}
+  .twrap{overflow-x:auto;border:1px solid #e5e5e5;border-radius:12px;background:#fff}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:#f8f8f8;padding:9px 4px;text-align:center;font-weight:600;color:#555;border-bottom:1px solid #eee;white-space:nowrap;position:sticky;top:0;z-index:2}
+  thead th.namecol{text-align:left;padding-left:14px;min-width:150px}
+  thead th.daycol{min-width:54px;font-size:12px;line-height:1.4}
+  thead th.totcol{min-width:64px;background:#f0f0f0}
+  tbody tr{border-bottom:1px solid #f0f0f0}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:#fafafa}
+  td{padding:6px 4px;text-align:center;vertical-align:middle}
+  td.namecol{padding-left:14px;text-align:left}
+  td input[type=number]{width:52px;height:34px;text-align:center;font-size:14px;font-weight:600;padding:4px 2px;border-radius:6px;color:#1a1a1a;background:#fff;border:1px solid #ddd;transition:border-color .15s}
+  td input[type=number]:focus{outline:none;border-color:#378ADD;background:#f0f6ff}
+  td input[type=number].saving{border-color:#EF9F27;background:#fffbf0}
+  td input[type=number].saved{border-color:#1D9E75;background:#f0fff8}
+  td input[type=number]::-webkit-outer-spin-button,
+  td input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+  td input[type=number]{-moz-appearance:textfield}
+  .totcell{font-weight:700;font-size:14px;color:#1a1a1a;background:#f4f4f4;padding:6px 10px}
+  .namewrap{display:flex;align-items:center;gap:8px}
+  .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .empty{text-align:center;padding:2.5rem;color:#aaa;font-size:13px}
+  .today{background:#e8f0fe !important}
+  .ranking{margin-top:2rem}
+  .rank-title{font-size:16px;font-weight:600;color:#1a1a1a;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .rank-list{display:flex;flex-direction:column;gap:8px}
+  .rank-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;border:1px solid #eee;background:#fff}
+  .rank-pos{font-size:15px;font-weight:700;min-width:34px;color:#888}
+  .rank-pos.gold{color:#B8860B}
+  .rank-pos.silver{color:#7A8694}
+  .rank-pos.bronze{color:#8B5E3C}
+  .rank-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .rank-nome{font-size:14px;font-weight:600;color:#1a1a1a;flex:1}
+  .rank-count{font-size:13px;font-weight:600;color:#555;white-space:nowrap}
+  .rank-bar-wrap{flex:2;height:7px;background:#f0f0f0;border-radius:99px;overflow:hidden;min-width:40px}
+  .rank-bar{height:7px;border-radius:99px;transition:width .5s ease}
+  .rank-empty{text-align:center;padding:1.5rem;color:#aaa;font-size:13px}
+  .toolbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-bottom:1rem;flex-wrap:wrap}
+  .erro-banner{display:none;align-items:flex-start;gap:12px;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:16px 18px;margin-bottom:1.25rem;font-size:13px;line-height:1.7;color:#5d4037}
+  .erro-banner i{font-size:20px;color:#F9A825;flex-shrink:0;margin-top:1px}
+  .erro-banner strong{color:#1a1a1a}
+  .erro-banner code{background:#fff3cd;padding:1px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+  @media(max-width:600px){
+    .container{padding:1rem .75rem}
+    .title{font-size:18px}
+    td input[type=number]{width:44px;height:30px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hdr">
+    <div>
+      <div class="title">
+        <i class="ti ti-package"></i>Controle de Entregas
+        <span class="badge badge-load" id="badge"><i class="ti ti-loader-2"></i> carregando...</span>
+      </div>
+      <div class="sub">Dados salvos no banco Neon · compartilhado com toda a equipe</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="selMes" onchange="trocarMes()"></select>
+      <select id="selAno" onchange="trocarMes()"></select>
+    </div>
+  </div>
+
+  <div class="erro-banner" id="erroDb">
+    <i class="ti ti-alert-triangle"></i>
+    <div>
+      <strong>Banco de dados não vinculado</strong><br>
+      A variável <code>DATABASE_URL</code> não foi encontrada. Siga os passos:<br>
+      1. No painel da Vercel, abra seu projeto<br>
+      2. Vá em <strong>Storage</strong> → <strong>Create Database</strong> → escolha <strong>Neon</strong><br>
+      3. Após criar, a variável é injetada automaticamente — faça um novo deploy clicando em <strong>Redeploy</strong>
+    </div>
+  </div>
+
+  <div class="row">
+    <input type="text" id="inpNome" placeholder="Nome do entregador..." maxlength="30"/>
+    <button class="btn bp" id="btnAdd"><i class="ti ti-plus"></i>Adicionar</button>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="toolbar">
+    <button class="btn bpdf" id="btnPDF"><i class="ti ti-file-type-pdf"></i>Gerar Relatório PDF</button>
+  </div>
+
+  <div class="twrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="ranking">
+    <div class="rank-title"><i class="ti ti-trophy"></i>Ranking do mês</div>
+    <div class="rank-list" id="rankList"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var DIAS_SEMANA=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+var AVATAR_COLORS=[
+  {bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},
+  {bg:'#FAEEDA',fg:'#854F0B'},{bg:'#FBEAF0',fg:'#993556'},
+  {bg:'#EAF3DE',fg:'#3B6D11'},{bg:'#FAECE7',fg:'#993C1D'}
+];
+var BAR_COLORS=['#378ADD','#1D9E75','#EF9F27','#D4537E','#639922','#D85A30'];
+var now=new Date();
+var state={mes:now.getMonth(),ano:now.getFullYear(),entregadores:[],dados:{}};
+
+// ── API HELPERS ──────────────────────────────────────────────
+async function api(method, path, body){
+  var opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  var r=await fetch('/api/'+path,opts);
+  if(!r.ok){
+    var txt=await r.text();
+    try{ var j=JSON.parse(txt); throw new Error(j.error||txt); }catch(e2){ throw new Error(txt); }
+  }
+  return r.json();
+}
+
+// ── BADGE ────────────────────────────────────────────────────
+function setBadge(tipo,txt){
+  var b=document.getElementById('badge');
+  b.className='badge badge-'+tipo;
+  var icon=tipo==='ok'?'ti-cloud-check':tipo==='err'?'ti-cloud-off':'ti-loader-2';
+  b.innerHTML='<i class="ti '+icon+'"></i> '+txt;
+}
+
+// ── CARREGAR DADOS ───────────────────────────────────────────
+async function carregarTudo(){
+  setBadge('load','carregando...');
+  try{
+    state.entregadores=await api('GET','entregadores');
+    state.dados=await api('GET','dados?ano='+state.ano+'&mes='+state.mes);
+    setBadge('ok','conectado ao banco');
+    renderizar();
+  }catch(e){
+    console.error(e);
+    var msg=e.message||'erro desconhecido';
+    setBadge('err',msg.slice(0,60));
+    if(msg.includes('DATABASE_URL')||msg.includes('FUNCTION_INVOCATION')){
+      document.getElementById('erroDb').style.display='flex';
+    }
+    renderizar();
   }
 }
+
+async function carregarDadosMes(){
+  setBadge('load','carregando...');
+  try{
+    state.dados=await api('GET','dados?ano='+state.ano+'&mes='+state.mes);
+    setBadge('ok','conectado ao banco');
+    renderizar();
+  }catch(e){
+    console.error(e);
+    var msg=e.message||'erro desconhecido';
+    setBadge('err',msg.slice(0,60));
+    if(msg.includes('DATABASE_URL')||msg.includes('FUNCTION_INVOCATION')){
+      document.getElementById('erroDb').style.display='flex';
+    }
+  }
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function diasNoMes(m,a){return new Date(a,m+1,0).getDate();}
+function getVal(id,d){return (state.dados[id]&&state.dados[id][d])?parseInt(state.dados[id][d])||0:0;}
+function totalEntregador(id){
+  var t=0,dias=diasNoMes(state.mes,state.ano);
+  for(var d=1;d<=dias;d++)t+=getVal(id,d);
+  return t;
+}
+function totalGeral(){
+  return state.entregadores.reduce(function(s,e){return s+totalEntregador(e.id);},0);
+}
+function getRanked(){
+  var ranked=state.entregadores.map(function(e,i){return{nome:e.nome,id:e.id,total:totalEntregador(e.id),idx:i};});
+  ranked.sort(function(a,b){return b.total-a.total;});
+  for(var i=0;i<ranked.length;i++){
+    if(i===0)ranked[i].pos=1;
+    else if(ranked[i].total===ranked[i-1].total)ranked[i].pos=ranked[i-1].pos;
+    else ranked[i].pos=i+1;
+  }
+  return ranked;
+}
+
+// ── SELECTS ──────────────────────────────────────────────────
+function iniciarSelects(){
+  var sm=document.getElementById('selMes'),sa=document.getElementById('selAno');
+  sm.innerHTML=MESES.map(function(m,i){return '<option value="'+i+'"'+(i===state.mes?' selected':'')+'>'+m+'</option>';}).join('');
+  var ano=now.getFullYear();
+  sa.innerHTML=[ano-1,ano,ano+1].map(function(a){return '<option value="'+a+'"'+(a===state.ano?' selected':'')+'>'+a+'</option>';}).join('');
+}
+function trocarMes(){
+  state.mes=parseInt(document.getElementById('selMes').value);
+  state.ano=parseInt(document.getElementById('selAno').value);
+  carregarDadosMes();
+}
+
+// ── RANKING ──────────────────────────────────────────────────
+function renderRanking(){
+  var ranked=getRanked();
+  var rl=document.getElementById('rankList');
+  if(!ranked.length){
+    rl.innerHTML='<div class="rank-empty"><i class="ti ti-trophy" style="font-size:20px;display:block;margin-bottom:6px"></i>Nenhum entregador cadastrado.</div>';
+    return;
+  }
+  var max=ranked[0].total||1,html='';
+  for(var i=0;i<ranked.length;i++){
+    var r=ranked[i];
+    var cor=AVATAR_COLORS[r.idx%AVATAR_COLORS.length];
+    var barCor=BAR_COLORS[r.idx%BAR_COLORS.length];
+    var ini=r.nome.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);
+    var posClass=r.pos===1?'gold':r.pos===2?'silver':r.pos===3?'bronze':'';
+    var pct=Math.round((r.total/max)*100);
+    var medalha=r.pos===1?' 🥇':r.pos===2?' 🥈':r.pos===3?' 🥉':'';
+    var label=r.total===1?'entrega':'entregas';
+    html+='<div class="rank-item">'
+      +'<span class="rank-pos '+posClass+'">'+r.pos+'°</span>'
+      +'<div class="rank-avatar" style="background:'+cor.bg+';color:'+cor.fg+'">'+ini+'</div>'
+      +'<span class="rank-nome">'+r.nome+medalha+'</span>'
+      +'<div class="rank-bar-wrap"><div class="rank-bar" style="width:'+pct+'%;background:'+barCor+'"></div></div>'
+      +'<span class="rank-count">'+r.total+' '+label+'</span>'
+      +'</div>';
+  }
+  rl.innerHTML=html;
+}
+
+// ── RESUMO ────────────────────────────────────────────────────
+function renderizarResumo(){
+  var gt=totalGeral(),n=state.entregadores.length,media=n?Math.round(gt/n):0;
+  var top=n?state.entregadores.reduce(function(a,b){return totalEntregador(a.id)>=totalEntregador(b.id)?a:b;}):null;
+  var h='<div class="stat"><div class="slbl">Total de entregas</div><div class="sval">'+gt+'</div></div>'
+      +'<div class="stat"><div class="slbl">Entregadores</div><div class="sval">'+n+'</div></div>';
+  if(n)h+='<div class="stat"><div class="slbl">Média por entregador</div><div class="sval">'+media+'</div></div>'
+         +'<div class="stat"><div class="slbl">Maior volume</div><div class="sval sm">'+top.nome+'</div></div>';
+  document.getElementById('summary').innerHTML=h;
+}
+
+// ── TOTAIS ────────────────────────────────────────────────────
+function atualizarTotais(){
+  var linhas=document.getElementById('tbody').querySelectorAll('tr');
+  for(var i=0;i<state.entregadores.length;i++){
+    var cel=linhas[i]&&linhas[i].querySelector('.totcell');
+    if(cel)cel.textContent=totalEntregador(state.entregadores[i].id);
+  }
+  renderizarResumo();
+  renderRanking();
+}
+
+// ── TABELA ────────────────────────────────────────────────────
+var saveTimers={};
+function renderizar(){
+  var dias=diasNoMes(state.mes,state.ano);
+  var hoje=new Date(),mesAtual=hoje.getMonth()===state.mes&&hoje.getFullYear()===state.ano,diaHoje=hoje.getDate();
+
+  var cab='<tr><th class="namecol">Entregador</th>';
+  for(var d=1;d<=dias;d++){
+    var dow=new Date(state.ano,state.mes,d).getDay(),isH=mesAtual&&d===diaHoje;
+    cab+='<th class="daycol'+(isH?' today':'')+'">'+d+'<br><span style="font-size:10px;font-weight:400;color:#aaa">'+DIAS_SEMANA[dow]+'</span></th>';
+  }
+  cab+='<th class="totcol">Total</th></tr>';
+  document.getElementById('thead').innerHTML=cab;
+
+  if(!state.entregadores.length){
+    document.getElementById('tbody').innerHTML='<tr><td colspan="'+(dias+2)+'" class="empty"><i class="ti ti-users" style="font-size:20px;display:block;margin-bottom:6px"></i>Nenhum entregador. Adicione um acima.</td></tr>';
+  }else{
+    var linhas='';
+    for(var ei=0;ei<state.entregadores.length;ei++){
+      var ent=state.entregadores[ei];
+      var cor=AVATAR_COLORS[ei%AVATAR_COLORS.length];
+      var ini=ent.nome.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);
+      linhas+='<tr><td class="namecol"><div class="namewrap">'
+        +'<div class="avatar" style="background:'+cor.bg+';color:'+cor.fg+'">'+ini+'</div>'
+        +'<span style="font-weight:600;font-size:13px">'+ent.nome+'</span>'
+        +'<button class="btn bd" onclick="removerEnt(\''+ent.id+'\')" style="margin-left:auto"><i class="ti ti-trash"></i></button>'
+        +'</div></td>';
+      for(var d2=1;d2<=dias;d2++){
+        var val=getVal(ent.id,d2),isH2=mesAtual&&d2===diaHoje;
+        linhas+='<td'+(isH2?' class="today"':'')+'>'
+          +'<input type="number" min="0" max="999" value="'+(val>0?val:'')+'" placeholder="" data-id="'+ent.id+'" data-dia="'+d2+'"/>'
+          +'</td>';
+      }
+      linhas+='<td class="totcell">'+totalEntregador(ent.id)+'</td></tr>';
+    }
+    document.getElementById('tbody').innerHTML=linhas;
+
+    document.getElementById('tbody').querySelectorAll('input[type=number]').forEach(function(inp){
+      inp.addEventListener('input',function(){
+        var id=this.getAttribute('data-id');
+        var dia=parseInt(this.getAttribute('data-dia'));
+        var qty=parseInt(this.value)||0;
+        if(!state.dados[id])state.dados[id]={};
+        state.dados[id][dia]=qty;
+        atualizarTotais();
+
+        // Salvar com debounce por célula
+        var cellKey=id+'_'+dia;
+        clearTimeout(saveTimers[cellKey]);
+        inp.className='saving';
+        setBadge('load','salvando...');
+        saveTimers[cellKey]=setTimeout(async function(inputEl,eid,edia,eqty){
+          try{
+            await api('POST','dados',{entregador_id:eid,ano:state.ano,mes:state.mes,dia:edia,quantidade:eqty});
+            inputEl.className='saved';
+            setBadge('ok','salvo');
+            setTimeout(function(){inputEl.className='';},1500);
+          }catch(e){
+            inputEl.className='';
+            setBadge('err','erro ao salvar');
+          }
+        }.bind(null,inp,id,dia,qty),700);
+      });
+    });
+  }
+  atualizarTotais();
+  renderizarResumo();
+  renderRanking();
+}
+
+// ── ADICIONAR / REMOVER ───────────────────────────────────────
+document.getElementById('btnAdd').addEventListener('click',async function(){
+  var inp=document.getElementById('inpNome'),nome=inp.value.trim();
+  if(!nome)return;
+  var id='e_'+Date.now();
+  setBadge('load','salvando...');
+  try{
+    await api('POST','entregadores',{id,nome});
+    state.entregadores.push({id,nome});
+    inp.value='';
+    setBadge('ok','salvo');
+    renderizar();
+  }catch(e){setBadge('err','erro ao salvar');}
+});
+document.getElementById('inpNome').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btnAdd').click();});
+
+window.removerEnt=async function(id){
+  if(!confirm('Remover este entregador? Os dados dele serão apagados.'))return;
+  setBadge('load','removendo...');
+  try{
+    await api('DELETE','entregadores?id='+id);
+    await api('DELETE','dados?entregador_id='+id);
+    state.entregadores=state.entregadores.filter(function(e){return e.id!==id;});
+    delete state.dados[id];
+    setBadge('ok','removido');
+    renderizar();
+  }catch(e){setBadge('err','erro ao remover');}
+};
+
+// ── PDF ───────────────────────────────────────────────────────
+document.getElementById('btnPDF').addEventListener('click',gerarPDF);
+function gerarPDF(){
+  if(!state.entregadores.length){alert('Adicione ao menos um entregador.');return;}
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  var dias=diasNoMes(state.mes,state.ano),nomeMes=MESES[state.mes]+' '+state.ano;
+  var gt=totalGeral(),n=state.entregadores.length,media=n?Math.round(gt/n):0;
+  var geradoEm=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  doc.setFillColor(21,101,192);doc.rect(0,0,297,22,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text('RELATÓRIO DE ENTREGAS',14,14);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(nomeMes,297-14,14,{align:'right'});
+
+  var cy=28,cards=[
+    {label:'Total de Entregas',value:String(gt)},{label:'Entregadores',value:String(n)},
+    {label:'Média por Entregador',value:String(media)},{label:'Gerado em',value:geradoEm}
+  ],cw=60,cgap=8,cx=14;
+  cards.forEach(function(c){
+    doc.setFillColor(240,246,255);doc.roundedRect(cx,cy,cw,16,2,2,'F');
+    doc.setTextColor(100,100,100);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(c.label,cx+4,cy+6);
+    doc.setTextColor(21,101,192);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(c.value,cx+4,cy+13);
+    cx+=cw+cgap;
+  });
+
+  var tableY=cy+22,cab2=['Entregador'];
+  for(var d=1;d<=dias;d++)cab2.push(String(d));
+  cab2.push('TOTAL');
+  var rows=state.entregadores.map(function(ent){
+    var row=[ent.nome];
+    for(var d2=1;d2<=dias;d2++){var v=getVal(ent.id,d2);row.push(v>0?String(v):'');}
+    row.push(String(totalEntregador(ent.id)));return row;
+  });
+  doc.autoTable({
+    head:[cab2],body:rows,startY:tableY,theme:'grid',
+    styles:{fontSize:7,cellPadding:2,halign:'center',valign:'middle',textColor:[30,30,30]},
+    headStyles:{fillColor:[21,101,192],textColor:255,fontStyle:'bold',fontSize:7},
+    columnStyles:{0:{halign:'left',minCellWidth:28,fontStyle:'bold'},[dias+1]:{fillColor:[230,240,255],fontStyle:'bold',textColor:[21,101,192]}},
+    alternateRowStyles:{fillColor:[248,250,255]},margin:{left:14,right:14},
+    didParseCell:function(data){
+      if(data.section==='body'&&data.column.index>0&&data.column.index<=dias&&parseInt(data.cell.raw)>0)
+        data.cell.styles.fillColor=[220,240,220];
+    }
+  });
+
+  doc.addPage('a4','portrait');
+  doc.setFillColor(21,101,192);doc.rect(0,0,210,22,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text('RANKING DE ENTREGADORES',14,14);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(nomeMes,210-14,14,{align:'right'});
+
+  var ranked=getRanked(),max2=ranked[0]?ranked[0].total||1:1,ry=30;
+  ranked.forEach(function(r){
+    var pct=Math.round((r.total/max2)*100);
+    var cardBg=r.pos===1?[255,248,220]:r.pos===2?[245,248,252]:r.pos===3?[251,245,238]:[248,248,248];
+    doc.setFillColor(cardBg[0],cardBg[1],cardBg[2]);doc.roundedRect(14,ry,182,18,2,2,'F');
+    var bc=r.pos===1?[212,160,11]:r.pos===2?[120,130,148]:r.pos===3?[139,94,60]:[180,180,180];
+    doc.setFillColor(bc[0],bc[1],bc[2]);doc.rect(14,ry,3,18,'F');
+    doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(bc[0],bc[1],bc[2]);doc.text(r.pos+'o',21,ry+11);
+    doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);doc.text(r.nome,38,ry+8);
+    var medal=r.pos===1?'1o LUGAR':r.pos===2?'2o LUGAR':r.pos===3?'3o LUGAR':'';
+    if(medal){
+      doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setFillColor(bc[0],bc[1],bc[2]);
+      doc.roundedRect(38,ry+9,22,6,1,1,'F');doc.setTextColor(255,255,255);doc.text(medal,39,ry+13.5);
+    }
+    doc.setFillColor(220,220,220);doc.roundedRect(80,ry+9,90,4,1,1,'F');
+    var bcolor=r.pos===1?[212,160,11]:r.pos===2?[100,120,148]:r.pos===3?[160,100,60]:[55,138,221];
+    doc.setFillColor(bcolor[0],bcolor[1],bcolor[2]);doc.roundedRect(80,ry+9,90*(pct/100),4,1,1,'F');
+    doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(21,101,192);
+    doc.text(r.total+(r.total===1?' entrega':' entregas'),197,ry+11,{align:'right'});
+    ry+=22;
+  });
+
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){
+    doc.setPage(p);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(160,160,160);
+    var pw=doc.internal.pageSize.getWidth(),ph2=doc.internal.pageSize.getHeight();
+    doc.text('Controle de Entregas  |  '+nomeMes+'  |  Página '+p+' de '+pc,pw/2,ph2-6,{align:'center'});
+  }
+  doc.save('relatorio-entregas-'+MESES[state.mes].toLowerCase()+'-'+state.ano+'.pdf');
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+iniciarSelects();
+carregarTudo();
+</script>
+</body>
+</html>
